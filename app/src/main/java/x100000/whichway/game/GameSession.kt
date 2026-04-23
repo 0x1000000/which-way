@@ -6,19 +6,23 @@ internal class GameSession(
     private val config: GameConfig,
     private val random: Random = Random.Default,
 ) {
+    private val commandQueue = mutableListOf<GameCommand>()
     private var totalResponseTimeMs = 0L
     private var responseCount = 0
     private var totalSpentTimeMs = 0L
-        private var state = GameScreenState.Playing(
-            score = 0,
-            lives = GameRules.STARTING_LIVES,
-            charges = 0,
+    private var state = GameScreenState.Playing(
+        score = 0,
+        lives = GameRules.STARTING_LIVES,
+        charges = 0,
         mistakes = 0,
         roundNumber = 0,
         isRestartRound = false,
-            config = config,
-            roundData = GameRules.nextRound(score = 0, previousScore = 0, previousRound = null, config = config, random = random),
-        )
+        config = config,
+        roundData = nextRoundData(
+            score = 0,
+            previousScore = 0,
+        ),
+    )
 
     fun snapshot(): GameScreenState.Playing = state
 
@@ -56,12 +60,9 @@ internal class GameSession(
                 },
                 roundNumber = current.roundNumber + 1,
                 isRestartRound = false,
-                roundData = GameRules.nextRound(
+                roundData = nextRoundData(
                     score = nextScore,
                     previousScore = current.score,
-                    previousRound = current.roundData,
-                    config = current.config,
-                    random = random,
                 ),
             )
             GameSessionResult.CorrectAdvance(
@@ -80,12 +81,9 @@ internal class GameSession(
             state = current.copy(
                 roundNumber = current.roundNumber + 1,
                 isRestartRound = false,
-                roundData = GameRules.nextRound(
+                roundData = nextRoundData(
                     score = current.score,
                     previousScore = current.score,
-                    previousRound = current.roundData,
-                    config = current.config,
-                    random = random,
                 ),
             )
             GameSessionResult.TimeoutAdvance(state)
@@ -122,14 +120,74 @@ internal class GameSession(
             mistakes = current.mistakes + 1,
             roundNumber = current.roundNumber + 1,
             isRestartRound = false,
-            roundData = GameRules.nextRound(
+            roundData = nextRoundData(
                 score = current.score,
                 previousScore = current.score,
-                previousRound = current.roundData,
-                config = current.config,
-                random = random,
             ),
         )
         return GameSessionResult.LifeLost(state)
+    }
+
+    private fun nextRoundData(
+        score: Int,
+        previousScore: Int,
+    ): RoundData =
+        GameRules.roundForCommand(
+            commandId = nextCommandId(
+                score = score,
+                previousScore = previousScore,
+            ),
+            random = random,
+        )
+
+    private fun nextCommandId(
+        score: Int,
+        previousScore: Int,
+    ): GameCommand {
+        val commands = availableCommandsFor(score)
+        val previousCommands = availableCommandsFor(previousScore)
+        val newlyUnlockedCommands = commands - previousCommands.toSet()
+        if (newlyUnlockedCommands.isNotEmpty()) {
+            val forcedCommand = newlyUnlockedCommands.random(random)
+            if (commands.size < MIN_COMMANDS_FOR_QUEUE_SELECTION) {
+                commandQueue.clear()
+                return forcedCommand
+            }
+
+            if (commandQueue.isEmpty()) {
+                rebuildQueue(commands.filter { it != forcedCommand })
+            } else {
+                commandQueue += newlyUnlockedCommands.filter { it != forcedCommand }
+                commandQueue.shuffle(random)
+            }
+            commandQueue.remove(forcedCommand)
+            commandQueue.add(0, forcedCommand)
+        } else if (commands.size < MIN_COMMANDS_FOR_QUEUE_SELECTION) {
+            commandQueue.clear()
+            return commands.random(random)
+        } else if (commandQueue.isEmpty()) {
+            rebuildQueue(commands)
+        }
+
+        return commandQueue.removeAt(0)
+    }
+
+    private fun rebuildQueue(commands: List<GameCommand>) {
+        commandQueue.clear()
+        commandQueue.addAll(commands)
+        commandQueue.shuffle(random)
+    }
+
+    private fun availableCommandsFor(score: Int): List<GameCommand> =
+        GameRules.commandIdsForScore(
+            score = GameRules.effectiveContentScoreFor(score, config),
+            commandProfile = config.commandProfile,
+            skipColors = config.skipColors,
+            skipSuits = config.skipSuits,
+            skipNot = config.skipNot,
+        )
+
+    private companion object {
+        private const val MIN_COMMANDS_FOR_QUEUE_SELECTION = 6
     }
 }

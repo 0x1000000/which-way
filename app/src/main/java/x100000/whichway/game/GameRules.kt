@@ -16,8 +16,6 @@ object GameRules {
     const val TIMEOUT_REDUCTION_STEP_PERCENT = 3
     const val TIMEOUT_GRACE_MILLIS = 200
     const val FAST_CHARGE_THRESHOLD_PROGRESS = 0.65f
-    private const val REROLL_ATTEMPTS = 4
-    private const val MIN_COMMANDS_FOR_REPEAT_AVOIDANCE = 8
     private const val NON_BREAKING_SPACE = '\u00A0'
 
     val maxUnlockScore: Int
@@ -94,10 +92,7 @@ object GameRules {
                 add(GameCommand.YELLOW)
             }
             if (score >= Level.Level8.unlockScore) {
-                add(GameCommand.DIAMONDS)
-                add(GameCommand.CLUBS)
-                add(GameCommand.SPADES)
-                add(GameCommand.HEARTS)
+                add(GameCommand.NUMBER)
             }
             if (score >= Level.Level9.unlockScore) {
                 add(GameCommand.OR_UP_DOWN)
@@ -108,18 +103,19 @@ object GameRules {
                 add(GameCommand.OR_LEFT_RIGHT)
             }
             if (score >= Level.Level10.unlockScore) {
+                add(GameCommand.EVEN)
+                add(GameCommand.ODD)
+            }
+            if (score >= Level.Level11.unlockScore) {
                 add(GameCommand.NOT_GREEN)
                 add(GameCommand.NOT_BLUE)
                 add(GameCommand.NOT_WHITE)
                 add(GameCommand.NOT_YELLOW)
             }
-            if (score >= Level.Level11.unlockScore) {
-                add(GameCommand.NOT_DIAMONDS)
-                add(GameCommand.NOT_CLUBS)
-                add(GameCommand.NOT_SPADES)
-                add(GameCommand.NOT_HEARTS)
-            }
             if (score >= Level.Level12.unlockScore) {
+                add(GameCommand.NOT_NUMBER)
+            }
+            if (score >= Level.Level13.unlockScore) {
                 add(GameCommand.OR_GREEN_BLUE)
                 add(GameCommand.OR_GREEN_WHITE)
                 add(GameCommand.OR_GREEN_YELLOW)
@@ -127,37 +123,39 @@ object GameRules {
                 add(GameCommand.OR_BLUE_YELLOW)
                 add(GameCommand.OR_WHITE_YELLOW)
             }
-            if (score >= Level.Level13.unlockScore) {
+            if (score >= Level.Level14.unlockScore) {
+                add(GameCommand.LESS_THAN)
+                add(GameCommand.GREATER_THAN)
+            }
+            if (score >= Level.Level15.unlockScore) {
                 add(GameCommand.GREEN_OR_UP)
                 add(GameCommand.BLUE_OR_RIGHT)
                 add(GameCommand.WHITE_OR_DOWN)
                 add(GameCommand.YELLOW_OR_LEFT)
             }
-            if (score >= Level.Level14.unlockScore) {
+            if (score >= Level.Level16.unlockScore) {
+                add(GameCommand.DIAMONDS)
+                add(GameCommand.CLUBS)
+                add(GameCommand.SPADES)
+                add(GameCommand.HEARTS)
+            }
+            if (score >= Level.Level17.unlockScore) {
+                add(GameCommand.NOT_DIAMONDS)
+                add(GameCommand.NOT_CLUBS)
+                add(GameCommand.NOT_SPADES)
+                add(GameCommand.NOT_HEARTS)
+            }
+            if (score >= Level.Level18.unlockScore) {
                 add(GameCommand.HEARTS_OR_UP)
                 add(GameCommand.SPADES_OR_RIGHT)
                 add(GameCommand.DIAMONDS_OR_DOWN)
                 add(GameCommand.CLUBS_OR_LEFT)
             }
-            if (score >= Level.Level15.unlockScore) {
+            if (score >= Level.Level19.unlockScore) {
                 add(GameCommand.NOT_GREEN_AND_NOT_UP)
                 add(GameCommand.NOT_BLUE_AND_NOT_RIGHT)
                 add(GameCommand.NOT_WHITE_AND_NOT_DOWN)
                 add(GameCommand.NOT_YELLOW_AND_NOT_LEFT)
-            }
-            if (score >= Level.Level16.unlockScore) {
-                add(GameCommand.NUMBER)
-            }
-            if (score >= Level.Level17.unlockScore) {
-                add(GameCommand.EVEN)
-                add(GameCommand.ODD)
-            }
-            if (score >= Level.Level18.unlockScore) {
-                add(GameCommand.NOT_NUMBER)
-            }
-            if (score >= Level.Level19.unlockScore) {
-                add(GameCommand.LESS_THAN)
-                add(GameCommand.GREATER_THAN)
             }
             if (score >= Level.Level20.unlockScore) {
                 add(GameCommand.UP_OR_NUMBER)
@@ -188,60 +186,6 @@ object GameRules {
             .filter { command -> !skipColors || !command.hasTag(CommandTag.Color) }
             .filter { command -> !skipSuits || !command.hasTag(CommandTag.Suit) }
             .filter { command -> !skipNot || !command.hasTag(CommandTag.Not) }
-
-    fun nextRound(
-        score: Int,
-        previousScore: Int = score,
-        previousRound: RoundData?,
-        config: GameConfig = GameConfig(),
-        random: Random = Random.Default,
-    ): RoundData {
-        val effectiveScore = effectiveContentScoreFor(score, config)
-        val previousEffectiveScore = effectiveContentScoreFor(previousScore, config)
-        val commands = commandIdsForScore(
-            score = effectiveScore,
-            commandProfile = config.commandProfile,
-            skipColors = config.skipColors,
-            skipSuits = config.skipSuits,
-            skipNot = config.skipNot,
-        )
-        val newlyUnlockedCommands = if (effectiveScore > previousEffectiveScore) {
-            commands - commandIdsForScore(
-                score = previousEffectiveScore,
-                commandProfile = config.commandProfile,
-                skipColors = config.skipColors,
-                skipSuits = config.skipSuits,
-                skipNot = config.skipNot,
-            ).toSet()
-        } else {
-            emptyList()
-        }
-        if (previousRound == null) {
-            return roundForCommand(commands.random(random), random)
-        }
-        if (newlyUnlockedCommands.isNotEmpty()) {
-            return roundForCommand(newlyUnlockedCommands.random(random), random)
-        }
-        if (commands.size < MIN_COMMANDS_FOR_REPEAT_AVOIDANCE) {
-            return roundForCommand(commands.random(random), random)
-        }
-        var candidate = roundForCommand(commands.random(random), random)
-        repeat(REROLL_ATTEMPTS) {
-            if (candidate.commandId != previousRound.commandId) {
-                return candidate
-            }
-            candidate = roundForCommand(commands.random(random), random)
-        }
-
-        commands.shuffled(random).forEach { command ->
-            val distinctCommandCandidate = roundForCommand(command, random)
-            if (distinctCommandCandidate.commandId != previousRound.commandId) {
-                return distinctCommandCandidate
-            }
-        }
-
-        return candidate
-    }
 
     fun roundForCommand(
         commandId: GameCommand,
@@ -361,6 +305,7 @@ object GameRules {
             CommandProfile.All -> true
             CommandProfile.DirectionsOnly -> command.isDirectionsOnlyCommand()
             CommandProfile.NumbersOnly -> command.isNumbersOnlyCommand()
+            CommandProfile.MathOnly -> command.isMathOnlyCommand()
             CommandProfile.SuitsOnly -> command.isTargetingOnlyTag(CommandTag.Suit)
             CommandProfile.TargetsOnly -> command.isTargetingOnlyTag(CommandTag.Target)
         }
@@ -370,6 +315,9 @@ object GameRules {
 
     private fun GameCommand.isNumbersOnlyCommand(): Boolean =
         isPureDomain(CommandTag.Number)
+
+    private fun GameCommand.isMathOnlyCommand(): Boolean =
+        tags.contains(CommandTag.Arithmetic) && !tags.contains(CommandTag.Not) && !tags.contains(CommandTag.Comparison)
 
     private fun GameCommand.isTargetingOnlyTag(tag: CommandTag): Boolean =
         isPureDomain(tag)

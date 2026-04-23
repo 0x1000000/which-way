@@ -12,6 +12,7 @@ internal fun CustomGameScreen(
     onStartWithHalfLevels: () -> Unit,
     onDirectionsOnly: () -> Unit,
     onNumbersOnly: () -> Unit,
+    onMathOnly: () -> Unit,
     onSuitsOnly: () -> Unit,
     onTargetsOnly: () -> Unit,
     onBack: () -> Unit,
@@ -33,8 +34,14 @@ internal fun CustomGameScreen(
         }
         add(
             MenuItem.Action(
-                text = stringResource(R.string.directions_only),
-                onClick = onDirectionsOnly,
+                text = stringResource(R.string.targets_only),
+                onClick = onTargetsOnly,
+            ),
+        )
+        add(
+            MenuItem.Action(
+                text = stringResource(R.string.math_only),
+                onClick = onMathOnly,
             ),
         )
         add(
@@ -45,14 +52,14 @@ internal fun CustomGameScreen(
         )
         add(
             MenuItem.Action(
-                text = stringResource(R.string.suits_only),
-                onClick = onSuitsOnly,
+                text = stringResource(R.string.directions_only),
+                onClick = onDirectionsOnly,
             ),
         )
         add(
             MenuItem.Action(
-                text = stringResource(R.string.targets_only),
-                onClick = onTargetsOnly,
+                text = stringResource(R.string.suits_only),
+                onClick = onSuitsOnly,
             ),
         )
         add(

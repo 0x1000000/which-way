@@ -170,4 +170,135 @@ class GameSessionTest {
         assertEquals(321L, stats.totalResponseTimeMs)
         assertEquals(1, stats.responseCount)
     }
+
+    @Test
+    fun smallCommandPool_usesRandomSelection_andCanRepeatImmediately() {
+        val stubbornRandom = object : Random() {
+            override fun nextBits(bitCount: Int): Int = 0
+        }
+        val session = GameSession(config = GameConfig(), random = stubbornRandom)
+        val initial = session.snapshot()
+
+        assertEquals(GameCommand.LEFT, initial.roundData.commandId)
+
+        val transition = session.onZoneClick(
+            direction = initial.roundData.validDirections.first(),
+            elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+        ) as GameSessionResult.CorrectAdvance
+
+        assertEquals(GameCommand.LEFT, transition.state.roundData.commandId)
+    }
+
+    @Test
+    fun levelThreeSizedCommandPool_usesQueue_withoutRepeatsInFirstCycle() {
+        val session = GameSession(
+            config = GameConfig(
+                unlockFloor = Level.Level3.unlockScore,
+                allowsProgression = false,
+            ),
+            random = Random(0),
+        )
+        val seenCommands = mutableListOf(session.snapshot().roundData.commandId!!)
+
+        repeat(7) {
+            val state = session.snapshot()
+            val transition = session.onZoneClick(
+                direction = state.roundData.validDirections.first(),
+                elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+            ) as GameSessionResult.CorrectAdvance
+            seenCommands += transition.state.roundData.commandId!!
+        }
+
+        assertEquals(8, seenCommands.distinct().size)
+    }
+
+    @Test
+    fun newlyUnlockedCommand_isForcedNext_whenQueueStrategyStarts() {
+        val session = GameSession(
+            config = GameConfig(
+                unlockFloor = Level.Level2.unlockScore,
+                allowsProgression = true,
+            ),
+            random = Random(0),
+        )
+
+        repeat(5) { index ->
+            val state = session.snapshot()
+            val transition = session.onZoneClick(
+                direction = state.roundData.validDirections.first(),
+                elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+            ) as GameSessionResult.CorrectAdvance
+
+            if (index == 4) {
+                assertTrue(
+                    transition.state.roundData.commandId in setOf(
+                        GameCommand.NOT_LEFT,
+                        GameCommand.NOT_RIGHT,
+                        GameCommand.NOT_UP,
+                        GameCommand.NOT_DOWN,
+                    ),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun newlyUnlockedCommand_isForcedNext_evenWhileStillInRandomSelectionPhase() {
+        val session = GameSession(config = GameConfig(), random = Random(0))
+
+        repeat(5) { index ->
+            val state = session.snapshot()
+            val transition = session.onZoneClick(
+                direction = state.roundData.validDirections.first(),
+                elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+            ) as GameSessionResult.CorrectAdvance
+
+            if (index == 4) {
+                assertTrue(
+                    transition.state.roundData.commandId in setOf(
+                        GameCommand.UP,
+                        GameCommand.DOWN,
+                    ),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun queuePreservesRemainingCommands_whenNewCommandsUnlock() {
+        val session = GameSession(
+            config = GameConfig(
+                unlockFloor = Level.Level3.unlockScore,
+                allowsProgression = true,
+            ),
+            random = Random(0),
+        )
+
+        val seenBeforeUnlock = mutableSetOf<GameCommand>()
+        repeat(4) {
+            val state = session.snapshot()
+            seenBeforeUnlock += state.roundData.commandId!!
+            session.onZoneClick(
+                direction = state.roundData.validDirections.first(),
+                elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+            )
+        }
+
+        assertEquals(4, seenBeforeUnlock.size)
+
+        val unlockingState = session.snapshot()
+        val unlockTransition = session.onZoneClick(
+            direction = unlockingState.roundData.validDirections.first(),
+            elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+        ) as GameSessionResult.CorrectAdvance
+
+        assertEquals(GameCommand.NOTHING, unlockTransition.state.roundData.commandId)
+
+        val afterUnlock = session.onTimeout(
+            elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+        ) as GameSessionResult.TimeoutAdvance
+
+        assertTrue(afterUnlock.state.roundData.commandId !in seenBeforeUnlock)
+        assertNotEquals(GameCommand.NOTHING, afterUnlock.state.roundData.commandId)
+    }
 }

@@ -7,6 +7,7 @@
     <string name="start_with_levels">Start at Level %1$d</string>
     <string name="directions_only">Directions only</string>
     <string name="numbers_only">Numbers only</string>
+    <string name="math_only">Math only</string>
     <string name="suits_only">Suits only</string>
     <string name="targets_only">Targets only</string>
     <string name="speed_slower">Speed -25%</string>

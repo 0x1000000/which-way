@@ -7,6 +7,8 @@ object RoundFactory {
     private const val MIN_OPERAND = 0
     private const val MIN_RESULT = 2
     private const val MAX_RESULT = 16
+    private const val MIN_COMPARISON_THRESHOLD = 3
+    private const val MAX_COMPARISON_THRESHOLD = 15
 
     fun colorRound(target: ColorTarget, random: Random): RoundData {
         val facts = createColorFacts(random)
@@ -213,7 +215,7 @@ object RoundFactory {
         comparisonRound(
             commandId = GameCommand.LESS_THAN,
             operator = "<",
-            threshold = random.nextInt(MIN_RESULT, MAX_RESULT + 1),
+            threshold = random.nextInt(MIN_COMPARISON_THRESHOLD, MAX_COMPARISON_THRESHOLD + 1),
             random = random,
         )
 
@@ -221,7 +223,7 @@ object RoundFactory {
         comparisonRound(
             commandId = GameCommand.GREATER_THAN,
             operator = ">",
-            threshold = random.nextInt(MIN_RESULT, MAX_RESULT + 1),
+            threshold = random.nextInt(MIN_COMPARISON_THRESHOLD, MAX_COMPARISON_THRESHOLD + 1),
             random = random,
         )
 
@@ -494,13 +496,14 @@ object RoundFactory {
         random: Random,
     ): Map<Direction, ZoneFacts> {
         val matchingPool = numberPool.filter(matchingPredicate)
-        require(matchingPool.isNotEmpty()) { "Comparison round requires at least one matching value." }
+        val nonMatchingPool = numberPool.filterNot(matchingPredicate)
+        require(matchingPool.size >= 2) { "Comparison round requires at least two matching values." }
+        require(nonMatchingPool.size >= 2) { "Comparison round requires at least two non-matching values." }
 
-        val guaranteedMatch = matchingPool.random(random)
-        val remainingNumbers = (numberPool - guaranteedMatch)
-            .shuffled(random)
-            .take(Direction.entries.size - 1)
-        val allNumbers = (remainingNumbers + guaranteedMatch).shuffled(random)
+        val allNumbers = (
+            matchingPool.shuffled(random).take(2) +
+                nonMatchingPool.shuffled(random).take(2)
+            ).shuffled(random)
 
         return Direction.entries.zip(allNumbers).associate { (direction, number) ->
             direction to ZoneFacts(number = number)
@@ -524,12 +527,12 @@ object RoundFactory {
 
     private fun arithmeticExpression(random: Random): Pair<String, Int> =
         if (random.nextBoolean()) {
-            val result = random.nextInt(MIN_RESULT, MAX_RESULT + 1)
+            val result = random.nextInt(MIN_COMPARISON_THRESHOLD, MAX_COMPARISON_THRESHOLD + 1)
             val left = random.nextInt(MIN_OPERAND, result + 1)
             val right = result - left
             "$left + $right" to result
         } else {
-            val result = random.nextInt(MIN_RESULT, MAX_RESULT + 1)
+            val result = random.nextInt(MIN_COMPARISON_THRESHOLD, MAX_COMPARISON_THRESHOLD + 1)
             val right = random.nextInt(MIN_OPERAND, MAX_RESULT - result + 1)
             val left = result + right
             "$left - $right" to result

@@ -393,8 +393,8 @@ class GameRulesTest {
         val threshold = round.prompt.removePrefix("< ").toInt()
 
         assertEquals(Complexity.High, round.complexity)
-        assertTrue(threshold in 2..16)
-        assertTrue(round.validDirections.isNotEmpty())
+        assertTrue(threshold in 3..15)
+        assertEquals(2, round.validDirections.size)
         round.zoneFacts.forEach { (direction, facts) ->
             val value = facts.number!!
             assertEquals(value < threshold, GameRules.isCorrectTap(round, direction))
@@ -407,8 +407,8 @@ class GameRulesTest {
         val threshold = round.prompt.removePrefix("> ").toInt()
 
         assertEquals(Complexity.High, round.complexity)
-        assertTrue(threshold in 2..16)
-        assertTrue(round.validDirections.isNotEmpty())
+        assertTrue(threshold in 3..15)
+        assertEquals(2, round.validDirections.size)
         round.zoneFacts.forEach { (direction, facts) ->
             val value = facts.number!!
             assertEquals(value > threshold, GameRules.isCorrectTap(round, direction))
@@ -427,8 +427,8 @@ class GameRulesTest {
         }
 
         assertEquals(Complexity.VeryHigh, round.complexity)
-        assertTrue(threshold in 2..16)
-        assertTrue(round.validDirections.isNotEmpty())
+        assertTrue(threshold in 3..15)
+        assertEquals(2, round.validDirections.size)
         round.zoneFacts.forEach { (direction, facts) ->
             val value = facts.number!!
             assertEquals(value > threshold, GameRules.isCorrectTap(round, direction))
@@ -748,24 +748,24 @@ class GameRulesTest {
                 listOf(GameCommand.GREEN, GameCommand.BLUE, GameCommand.WHITE, GameCommand.YELLOW),
             ),
         )
+        assertTrue(GameRules.commandIdsForScore(35).contains(GameCommand.NUMBER))
+        assertTrue(GameRules.commandIdsForScore(40).contains(GameCommand.OR_UP_DOWN))
+        assertTrue(GameRules.commandIdsForScore(45).contains(GameCommand.EVEN))
+        assertTrue(GameRules.commandIdsForScore(45).contains(GameCommand.ODD))
+        assertTrue(GameRules.commandIdsForScore(50).contains(GameCommand.NOT_GREEN))
+        assertTrue(GameRules.commandIdsForScore(55).contains(GameCommand.NOT_NUMBER))
+        assertTrue(GameRules.commandIdsForScore(60).contains(GameCommand.OR_GREEN_BLUE))
+        assertTrue(GameRules.commandIdsForScore(65).contains(GameCommand.LESS_THAN))
+        assertTrue(GameRules.commandIdsForScore(65).contains(GameCommand.GREATER_THAN))
+        assertTrue(GameRules.commandIdsForScore(70).contains(GameCommand.GREEN_OR_UP))
         assertTrue(
-            GameRules.commandIdsForScore(35).containsAll(
+            GameRules.commandIdsForScore(75).containsAll(
                 listOf(GameCommand.DIAMONDS, GameCommand.CLUBS, GameCommand.SPADES, GameCommand.HEARTS),
             ),
         )
-        assertTrue(GameRules.commandIdsForScore(40).contains(GameCommand.OR_UP_DOWN))
-        assertTrue(GameRules.commandIdsForScore(45).contains(GameCommand.NOT_GREEN))
-        assertTrue(GameRules.commandIdsForScore(50).contains(GameCommand.NOT_DIAMONDS))
-        assertTrue(GameRules.commandIdsForScore(55).contains(GameCommand.OR_GREEN_BLUE))
-        assertTrue(GameRules.commandIdsForScore(60).contains(GameCommand.GREEN_OR_UP))
-        assertTrue(GameRules.commandIdsForScore(65).contains(GameCommand.HEARTS_OR_UP))
-        assertTrue(GameRules.commandIdsForScore(70).contains(GameCommand.NOT_GREEN_AND_NOT_UP))
-        assertTrue(GameRules.commandIdsForScore(75).contains(GameCommand.NUMBER))
-        assertTrue(GameRules.commandIdsForScore(80).contains(GameCommand.EVEN))
-        assertTrue(GameRules.commandIdsForScore(80).contains(GameCommand.ODD))
-        assertTrue(GameRules.commandIdsForScore(85).contains(GameCommand.NOT_NUMBER))
-        assertTrue(GameRules.commandIdsForScore(90).contains(GameCommand.LESS_THAN))
-        assertTrue(GameRules.commandIdsForScore(90).contains(GameCommand.GREATER_THAN))
+        assertTrue(GameRules.commandIdsForScore(80).contains(GameCommand.NOT_DIAMONDS))
+        assertTrue(GameRules.commandIdsForScore(85).contains(GameCommand.HEARTS_OR_UP))
+        assertTrue(GameRules.commandIdsForScore(90).contains(GameCommand.NOT_GREEN_AND_NOT_UP))
         assertTrue(GameRules.commandIdsForScore(95).contains(GameCommand.UP_OR_NUMBER))
         assertTrue(GameRules.commandIdsForScore(100).contains(GameCommand.BLUE_OR_NUMBER))
         assertTrue(
@@ -797,6 +797,7 @@ class GameRulesTest {
         assertEquals(10, GameRules.levelForScore(45))
         assertEquals(11, GameRules.levelForScore(50))
         assertEquals(15, GameRules.levelForScore(70))
+        assertEquals(16, GameRules.levelForScore(75))
         assertEquals(17, GameRules.levelForScore(80))
         assertEquals(18, GameRules.levelForScore(85))
         assertEquals(19, GameRules.levelForScore(90))
@@ -815,23 +816,23 @@ class GameRulesTest {
     fun progression_doesNotUnlockCommandsBeforeThresholds() {
         assertFalse(GameRules.commandIdsForScore(24).contains(GameCommand.TARGET))
         assertFalse(GameRules.commandIdsForScore(24).contains(GameCommand.NOT_TARGET))
-        assertFalse(GameRules.commandIdsForScore(34).contains(GameCommand.DIAMONDS))
-        assertFalse(GameRules.commandIdsForScore(34).contains(GameCommand.HEARTS))
-        assertFalse(GameRules.commandIdsForScore(54).contains(GameCommand.OR_GREEN_BLUE))
-        assertFalse(GameRules.commandIdsForScore(59).contains(GameCommand.GREEN_OR_UP))
-        assertFalse(GameRules.commandIdsForScore(64).contains(GameCommand.HEARTS_OR_UP))
-        assertFalse(GameRules.commandIdsForScore(69).contains(GameCommand.NOT_GREEN_AND_NOT_UP))
-        assertFalse(GameRules.commandIdsForScore(74).contains(GameCommand.NUMBER))
-        assertFalse(GameRules.commandIdsForScore(79).contains(GameCommand.EVEN))
-        assertFalse(GameRules.commandIdsForScore(84).contains(GameCommand.NOT_NUMBER))
-        assertFalse(GameRules.commandIdsForScore(89).contains(GameCommand.LESS_THAN))
-        assertFalse(GameRules.commandIdsForScore(89).contains(GameCommand.GREATER_THAN))
+        assertFalse(GameRules.commandIdsForScore(34).contains(GameCommand.NUMBER))
+        assertFalse(GameRules.commandIdsForScore(44).contains(GameCommand.EVEN))
+        assertFalse(GameRules.commandIdsForScore(49).contains(GameCommand.NOT_GREEN))
+        assertFalse(GameRules.commandIdsForScore(54).contains(GameCommand.NOT_NUMBER))
+        assertFalse(GameRules.commandIdsForScore(59).contains(GameCommand.OR_GREEN_BLUE))
+        assertFalse(GameRules.commandIdsForScore(64).contains(GameCommand.LESS_THAN))
+        assertFalse(GameRules.commandIdsForScore(64).contains(GameCommand.GREATER_THAN))
+        assertFalse(GameRules.commandIdsForScore(69).contains(GameCommand.GREEN_OR_UP))
+        assertFalse(GameRules.commandIdsForScore(74).contains(GameCommand.DIAMONDS))
+        assertFalse(GameRules.commandIdsForScore(74).contains(GameCommand.HEARTS))
+        assertFalse(GameRules.commandIdsForScore(79).contains(GameCommand.NOT_DIAMONDS))
+        assertFalse(GameRules.commandIdsForScore(84).contains(GameCommand.HEARTS_OR_UP))
+        assertFalse(GameRules.commandIdsForScore(89).contains(GameCommand.NOT_GREEN_AND_NOT_UP))
         assertFalse(GameRules.commandIdsForScore(94).contains(GameCommand.UP_OR_NUMBER))
         assertFalse(GameRules.commandIdsForScore(99).contains(GameCommand.GREEN_OR_NUMBER))
         assertFalse(GameRules.commandIdsForScore(104).contains(GameCommand.ADDITION))
         assertFalse(GameRules.commandIdsForScore(104).contains(GameCommand.SUBTRACTION))
-        assertFalse(GameRules.commandIdsForScore(49).contains(GameCommand.NOT_DIAMONDS))
-        assertFalse(GameRules.commandIdsForScore(49).contains(GameCommand.NOT_HEARTS))
         assertFalse(GameRules.commandIdsForScore(109).contains(GameCommand.LESS_THAN_ARITHMETIC))
         assertFalse(GameRules.commandIdsForScore(109).contains(GameCommand.GREATER_THAN_ARITHMETIC))
         assertFalse(GameRules.commandIdsForScore(114).contains(GameCommand.NOT_ADDITION))
@@ -875,6 +876,22 @@ class GameRulesTest {
         assertFalse(commands.contains(GameCommand.BLUE_OR_NUMBER))
         assertFalse(commands.contains(GameCommand.LEFT))
         assertFalse(commands.contains(GameCommand.GREEN))
+    }
+
+    @Test
+    fun mathOnlyProfile_containsOnlyAdditionAndSubtraction() {
+        val commands = GameRules.commandIdsForScore(
+            score = GameRules.maxUnlockScore,
+            commandProfile = CommandProfile.MathOnly,
+        )
+
+        assertEquals(
+            setOf(
+                GameCommand.ADDITION,
+                GameCommand.SUBTRACTION,
+            ),
+            commands.toSet(),
+        )
     }
 
     @Test
@@ -926,6 +943,13 @@ class GameRulesTest {
             skipSuits = true,
             skipNot = true,
         )
+        val mathOnlyCommands = GameRules.commandIdsForScore(
+            score = GameRules.maxUnlockScore,
+            commandProfile = CommandProfile.MathOnly,
+            skipColors = true,
+            skipSuits = true,
+            skipNot = true,
+        )
         val targetsOnlyCommands = GameRules.commandIdsForScore(
             score = GameRules.maxUnlockScore,
             commandProfile = CommandProfile.TargetsOnly,
@@ -936,6 +960,7 @@ class GameRulesTest {
 
         assertTrue(directionsOnlyCommands.isNotEmpty())
         assertTrue(numbersOnlyCommands.isNotEmpty())
+        assertTrue(mathOnlyCommands.isNotEmpty())
         assertTrue(targetsOnlyCommands.isNotEmpty())
     }
 
@@ -1030,81 +1055,4 @@ class GameRulesTest {
         assertEquals(275, GameRules.unlockScoreForLevel(999))
     }
 
-    @Test
-    fun nextRound_atOpeningStage_staysWithinLeftAndRightPrompts() {
-        repeat(20) {
-            val round = GameRules.nextRound(score = 0, previousRound = null)
-
-            assertTrue(round.prompt in listOf("LEFT", "RIGHT"))
-            assertTrue(round.validDirections.size == 1)
-        }
-    }
-
-    @Test
-    fun nextRound_afterLifeLoss_picksDifferentStaticRoundWhenAvailable() {
-        val stubbornRandom = object : Random() {
-            override fun nextBits(bitCount: Int): Int = 0
-        }
-
-        val round = GameRules.nextRound(
-            score = Level.Level8.unlockScore,
-            previousRound = RoundStorage.Left,
-            random = stubbornRandom,
-        )
-
-        assertNotEquals(GameCommand.LEFT, round.commandId)
-    }
-
-    @Test
-    fun nextRound_withSmallCommandPool_allowsImmediateRepeat() {
-        val stubbornRandom = object : Random() {
-            override fun nextBits(bitCount: Int): Int = 0
-        }
-
-        val round = GameRules.nextRound(
-            score = 0,
-            previousRound = RoundStorage.Left,
-            random = stubbornRandom,
-        )
-
-        assertEquals(GameCommand.LEFT, round.commandId)
-    }
-
-    @Test
-    fun nextRound_inSuitsOnly_prefersDifferentCommandWhenAvailable() {
-        val stubbornRandom = object : Random() {
-            override fun nextBits(bitCount: Int): Int = 0
-        }
-        val previousRound = GameRules.roundForCommand(GameCommand.CLUBS, Random(0))
-        val config = GameConfig(
-            unlockFloor = GameRules.maxUnlockScore,
-            commandProfile = CommandProfile.SuitsOnly,
-            allowsProgression = false,
-        )
-
-        val round = GameRules.nextRound(
-            score = 0,
-            previousRound = previousRound,
-            config = config,
-            random = stubbornRandom,
-        )
-
-        assertNotEquals(previousRound.commandId, round.commandId)
-    }
-
-    @Test
-    fun nextRound_afterLevelUnlock_forcesNewlyUnlockedCommand() {
-        val stubbornRandom = object : Random() {
-            override fun nextBits(bitCount: Int): Int = 0
-        }
-
-        val round = GameRules.nextRound(
-            score = Level.Level6.unlockScore,
-            previousScore = Level.Level6.unlockScore - 1,
-            previousRound = RoundStorage.NotNothing,
-            random = stubbornRandom,
-        )
-
-        assertTrue(round.commandId in setOf(GameCommand.TARGET, GameCommand.NOT_TARGET))
-    }
 }

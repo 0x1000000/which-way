@@ -19,6 +19,7 @@ enum class CommandProfile {
     All,
     DirectionsOnly,
     NumbersOnly,
+    MathOnly,
     SuitsOnly,
     TargetsOnly,
 }

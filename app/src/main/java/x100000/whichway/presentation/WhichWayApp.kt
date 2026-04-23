@@ -97,6 +97,18 @@ fun WhichWayApp(repository: GameDataRepository) {
         allowsProgression = false,
     )
 
+    fun mathOnlyConfig() = GameConfig(
+        unlockFloor = GameRules.maxUnlockScore,
+        commandProfile = CommandProfile.MathOnly,
+        timeoutRampMode = TimeoutRampMode.PracticeImmediateRamp,
+        speedPercent = savedData.speedPercent,
+        skipColors = savedData.skipColors,
+        skipSuits = savedData.skipSuits,
+        skipNot = savedData.skipNot,
+        tracksStats = false,
+        allowsProgression = false,
+    )
+
     fun suitsOnlyConfig() = GameConfig(
         unlockFloor = GameRules.maxUnlockScore,
         commandProfile = CommandProfile.SuitsOnly,
@@ -227,6 +239,7 @@ fun WhichWayApp(repository: GameDataRepository) {
                 onStartWithHalfLevels = { startGame(fixedLevelConfig(halfDiscoveredLevel)) },
                 onDirectionsOnly = { startGame(directionsOnlyConfig()) },
                 onNumbersOnly = { startGame(numbersOnlyConfig()) },
+                onMathOnly = { startGame(mathOnlyConfig()) },
                 onSuitsOnly = { startGame(suitsOnlyConfig()) },
                 onTargetsOnly = { startGame(targetsOnlyConfig()) },
                 onBack = { appScreen = AppScreen.Home },
