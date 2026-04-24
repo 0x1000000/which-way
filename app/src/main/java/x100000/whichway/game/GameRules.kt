@@ -21,6 +21,11 @@ object GameRules {
     val maxUnlockScore: Int
         get() = Level.entries.last().unlockScore
 
+    private data class UnlockEntry(
+        val level: Level,
+        val commands: List<GameCommand>,
+    )
+
     private val lastCommandLevel = Level.entries.last().ordinal + 1
     private val lastCommandUnlockScore = Level.entries.last().unlockScore
     private val timeoutReductionFractionPerStep = TIMEOUT_REDUCTION_STEP_PERCENT / 100f
@@ -33,6 +38,138 @@ object GameRules {
             }
         }.last().first
     private val maxLevel = lastCommandLevel + maxTimeoutReductionSteps
+    private val commandUnlocks = listOf(
+        UnlockEntry(Level.Level1, listOf(GameCommand.LEFT, GameCommand.RIGHT)),
+        UnlockEntry(Level.Level2, listOf(GameCommand.UP, GameCommand.DOWN)),
+        UnlockEntry(
+            Level.Level3,
+            listOf(
+                GameCommand.NOT_LEFT,
+                GameCommand.NOT_RIGHT,
+                GameCommand.NOT_UP,
+                GameCommand.NOT_DOWN,
+            ),
+        ),
+        UnlockEntry(Level.Level4, listOf(GameCommand.NOTHING)),
+        UnlockEntry(Level.Level5, listOf(GameCommand.NOT_NOTHING)),
+        UnlockEntry(Level.Level6, listOf(GameCommand.TARGET, GameCommand.NOT_TARGET)),
+        UnlockEntry(
+            Level.Level7,
+            listOf(
+                GameCommand.GREEN,
+                GameCommand.BLUE,
+                GameCommand.WHITE,
+                GameCommand.YELLOW,
+            ),
+        ),
+        UnlockEntry(Level.Level8, listOf(GameCommand.NUMBER)),
+        UnlockEntry(
+            Level.Level9,
+            listOf(
+                GameCommand.OR_UP_DOWN,
+                GameCommand.OR_UP_LEFT,
+                GameCommand.OR_UP_RIGHT,
+                GameCommand.OR_DOWN_LEFT,
+                GameCommand.OR_DOWN_RIGHT,
+                GameCommand.OR_LEFT_RIGHT,
+            ),
+        ),
+        UnlockEntry(Level.Level10, listOf(GameCommand.EVEN, GameCommand.ODD)),
+        UnlockEntry(
+            Level.Level11,
+            listOf(
+                GameCommand.NOT_GREEN,
+                GameCommand.NOT_BLUE,
+                GameCommand.NOT_WHITE,
+                GameCommand.NOT_YELLOW,
+            ),
+        ),
+        UnlockEntry(Level.Level12, listOf(GameCommand.NOT_NUMBER)),
+        UnlockEntry(
+            Level.Level13,
+            listOf(
+                GameCommand.OR_GREEN_BLUE,
+                GameCommand.OR_GREEN_WHITE,
+                GameCommand.OR_GREEN_YELLOW,
+                GameCommand.OR_BLUE_WHITE,
+                GameCommand.OR_BLUE_YELLOW,
+                GameCommand.OR_WHITE_YELLOW,
+            ),
+        ),
+        UnlockEntry(Level.Level14, listOf(GameCommand.LESS_THAN, GameCommand.GREATER_THAN)),
+        UnlockEntry(
+            Level.Level15,
+            listOf(
+                GameCommand.GREEN_OR_UP,
+                GameCommand.BLUE_OR_RIGHT,
+                GameCommand.WHITE_OR_DOWN,
+                GameCommand.YELLOW_OR_LEFT,
+            ),
+        ),
+        UnlockEntry(
+            Level.Level16,
+            listOf(
+                GameCommand.DIAMONDS,
+                GameCommand.CLUBS,
+                GameCommand.SPADES,
+                GameCommand.HEARTS,
+            ),
+        ),
+        UnlockEntry(
+            Level.Level17,
+            listOf(
+                GameCommand.NOT_DIAMONDS,
+                GameCommand.NOT_CLUBS,
+                GameCommand.NOT_SPADES,
+                GameCommand.NOT_HEARTS,
+            ),
+        ),
+        UnlockEntry(
+            Level.Level18,
+            listOf(
+                GameCommand.HEARTS_OR_UP,
+                GameCommand.SPADES_OR_RIGHT,
+                GameCommand.DIAMONDS_OR_DOWN,
+                GameCommand.CLUBS_OR_LEFT,
+            ),
+        ),
+        UnlockEntry(
+            Level.Level19,
+            listOf(
+                GameCommand.NOT_GREEN_AND_NOT_UP,
+                GameCommand.NOT_BLUE_AND_NOT_RIGHT,
+                GameCommand.NOT_WHITE_AND_NOT_DOWN,
+                GameCommand.NOT_YELLOW_AND_NOT_LEFT,
+            ),
+        ),
+        UnlockEntry(
+            Level.Level20,
+            listOf(
+                GameCommand.UP_OR_NUMBER,
+                GameCommand.RIGHT_OR_NUMBER,
+                GameCommand.DOWN_OR_NUMBER,
+                GameCommand.LEFT_OR_NUMBER,
+            ),
+        ),
+        UnlockEntry(
+            Level.Level21,
+            listOf(
+                GameCommand.GREEN_OR_NUMBER,
+                GameCommand.BLUE_OR_NUMBER,
+                GameCommand.WHITE_OR_NUMBER,
+                GameCommand.YELLOW_OR_NUMBER,
+            ),
+        ),
+        UnlockEntry(Level.Level22, listOf(GameCommand.ADDITION, GameCommand.SUBTRACTION)),
+        UnlockEntry(
+            Level.Level23,
+            listOf(
+                GameCommand.LESS_THAN_ARITHMETIC,
+                GameCommand.GREATER_THAN_ARITHMETIC,
+            ),
+        ),
+        UnlockEntry(Level.Level24, listOf(GameCommand.NOT_ADDITION, GameCommand.NOT_SUBTRACTION)),
+    )
 
     fun levelForScore(score: Int): Int {
         if (score < lastCommandUnlockScore) {
@@ -63,123 +200,11 @@ object GameRules {
         skipNot: Boolean = false,
     ): List<GameCommand> =
         buildList {
-            add(GameCommand.LEFT)
-            add(GameCommand.RIGHT)
-            if (score >= Level.Level2.unlockScore) {
-                add(GameCommand.UP)
-                add(GameCommand.DOWN)
-            }
-            if (score >= Level.Level3.unlockScore) {
-                add(GameCommand.NOT_LEFT)
-                add(GameCommand.NOT_RIGHT)
-                add(GameCommand.NOT_UP)
-                add(GameCommand.NOT_DOWN)
-            }
-            if (score >= Level.Level4.unlockScore) {
-                add(GameCommand.NOTHING)
-            }
-            if (score >= Level.Level5.unlockScore) {
-                add(GameCommand.NOT_NOTHING)
-            }
-            if (score >= Level.Level6.unlockScore) {
-                add(GameCommand.TARGET)
-                add(GameCommand.NOT_TARGET)
-            }
-            if (score >= Level.Level7.unlockScore) {
-                add(GameCommand.GREEN)
-                add(GameCommand.BLUE)
-                add(GameCommand.WHITE)
-                add(GameCommand.YELLOW)
-            }
-            if (score >= Level.Level8.unlockScore) {
-                add(GameCommand.NUMBER)
-            }
-            if (score >= Level.Level9.unlockScore) {
-                add(GameCommand.OR_UP_DOWN)
-                add(GameCommand.OR_UP_LEFT)
-                add(GameCommand.OR_UP_RIGHT)
-                add(GameCommand.OR_DOWN_LEFT)
-                add(GameCommand.OR_DOWN_RIGHT)
-                add(GameCommand.OR_LEFT_RIGHT)
-            }
-            if (score >= Level.Level10.unlockScore) {
-                add(GameCommand.EVEN)
-                add(GameCommand.ODD)
-            }
-            if (score >= Level.Level11.unlockScore) {
-                add(GameCommand.NOT_GREEN)
-                add(GameCommand.NOT_BLUE)
-                add(GameCommand.NOT_WHITE)
-                add(GameCommand.NOT_YELLOW)
-            }
-            if (score >= Level.Level12.unlockScore) {
-                add(GameCommand.NOT_NUMBER)
-            }
-            if (score >= Level.Level13.unlockScore) {
-                add(GameCommand.OR_GREEN_BLUE)
-                add(GameCommand.OR_GREEN_WHITE)
-                add(GameCommand.OR_GREEN_YELLOW)
-                add(GameCommand.OR_BLUE_WHITE)
-                add(GameCommand.OR_BLUE_YELLOW)
-                add(GameCommand.OR_WHITE_YELLOW)
-            }
-            if (score >= Level.Level14.unlockScore) {
-                add(GameCommand.LESS_THAN)
-                add(GameCommand.GREATER_THAN)
-            }
-            if (score >= Level.Level15.unlockScore) {
-                add(GameCommand.GREEN_OR_UP)
-                add(GameCommand.BLUE_OR_RIGHT)
-                add(GameCommand.WHITE_OR_DOWN)
-                add(GameCommand.YELLOW_OR_LEFT)
-            }
-            if (score >= Level.Level16.unlockScore) {
-                add(GameCommand.DIAMONDS)
-                add(GameCommand.CLUBS)
-                add(GameCommand.SPADES)
-                add(GameCommand.HEARTS)
-            }
-            if (score >= Level.Level17.unlockScore) {
-                add(GameCommand.NOT_DIAMONDS)
-                add(GameCommand.NOT_CLUBS)
-                add(GameCommand.NOT_SPADES)
-                add(GameCommand.NOT_HEARTS)
-            }
-            if (score >= Level.Level18.unlockScore) {
-                add(GameCommand.HEARTS_OR_UP)
-                add(GameCommand.SPADES_OR_RIGHT)
-                add(GameCommand.DIAMONDS_OR_DOWN)
-                add(GameCommand.CLUBS_OR_LEFT)
-            }
-            if (score >= Level.Level19.unlockScore) {
-                add(GameCommand.NOT_GREEN_AND_NOT_UP)
-                add(GameCommand.NOT_BLUE_AND_NOT_RIGHT)
-                add(GameCommand.NOT_WHITE_AND_NOT_DOWN)
-                add(GameCommand.NOT_YELLOW_AND_NOT_LEFT)
-            }
-            if (score >= Level.Level20.unlockScore) {
-                add(GameCommand.UP_OR_NUMBER)
-                add(GameCommand.RIGHT_OR_NUMBER)
-                add(GameCommand.DOWN_OR_NUMBER)
-                add(GameCommand.LEFT_OR_NUMBER)
-            }
-            if (score >= Level.Level21.unlockScore) {
-                add(GameCommand.GREEN_OR_NUMBER)
-                add(GameCommand.BLUE_OR_NUMBER)
-                add(GameCommand.WHITE_OR_NUMBER)
-                add(GameCommand.YELLOW_OR_NUMBER)
-            }
-            if (score >= Level.Level22.unlockScore) {
-                add(GameCommand.ADDITION)
-                add(GameCommand.SUBTRACTION)
-            }
-            if (score >= Level.Level23.unlockScore) {
-                add(GameCommand.LESS_THAN_ARITHMETIC)
-                add(GameCommand.GREATER_THAN_ARITHMETIC)
-            }
-            if (score >= Level.Level24.unlockScore) {
-                add(GameCommand.NOT_ADDITION)
-                add(GameCommand.NOT_SUBTRACTION)
+            for (entry in commandUnlocks) {
+                if (score < entry.level.unlockScore) {
+                    break
+                }
+                addAll(entry.commands)
             }
         }
             .filter { command -> matchesCommandProfile(command, commandProfile) }
@@ -340,17 +365,13 @@ object GameRules {
         score: Int,
         timeoutRampMode: TimeoutRampMode,
     ): Int {
-        val scoreStep = when (timeoutRampMode) {
-            TimeoutRampMode.NormalProgression -> TIMEOUT_REDUCTION_SCORE_STEP
-            TimeoutRampMode.PracticeImmediateRamp -> TIMEOUT_REDUCTION_SCORE_STEP
-        }
         val effectiveScore = when (timeoutRampMode) {
             TimeoutRampMode.NormalProgression ->
                 (score.coerceAtLeast(0) - lastCommandUnlockScore).coerceAtLeast(0)
             TimeoutRampMode.PracticeImmediateRamp ->
                 score.coerceAtLeast(0)
         }
-        return (effectiveScore / scoreStep)
+        return (effectiveScore / TIMEOUT_REDUCTION_SCORE_STEP)
             .coerceAtMost(maxTimeoutReductionSteps)
     }
 

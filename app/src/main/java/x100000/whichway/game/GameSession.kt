@@ -7,6 +7,7 @@ internal class GameSession(
     private val random: Random = Random.Default,
 ) {
     private val commandQueue = mutableListOf<GameCommand>()
+    private val recentAnswerSets = ArrayDeque<Set<Direction>>()
     private var totalResponseTimeMs = 0L
     private var responseCount = 0
     private var totalSpentTimeMs = 0L
@@ -131,45 +132,76 @@ internal class GameSession(
     private fun nextRoundData(
         score: Int,
         previousScore: Int,
-    ): RoundData =
-        GameRules.roundForCommand(
-            commandId = nextCommandId(
-                score = score,
-                previousScore = previousScore,
-            ),
-            random = random,
-        )
-
-    private fun nextCommandId(
-        score: Int,
-        previousScore: Int,
-    ): GameCommand {
+    ): RoundData {
         val commands = availableCommandsFor(score)
         val previousCommands = availableCommandsFor(previousScore)
         val newlyUnlockedCommands = commands - previousCommands.toSet()
-        if (newlyUnlockedCommands.isNotEmpty()) {
-            val forcedCommand = newlyUnlockedCommands.random(random)
-            if (commands.size < MIN_COMMANDS_FOR_QUEUE_SELECTION) {
-                commandQueue.clear()
-                return forcedCommand
-            }
+        val roundData = when {
+            newlyUnlockedCommands.isNotEmpty() ->
+                GameRules.roundForCommand(
+                    commandId = selectUnlockedCommand(commands, newlyUnlockedCommands),
+                    random = random,
+                )
+            usesQueueSelection(commands) ->
+                GameRules.roundForCommand(
+                    commandId = popQueuedCommand(commands),
+                    random = random,
+                )
+            else -> nextRandomRoundAvoidingTripleAnswers(commands)
+        }
+        rememberAnswerSet(roundData.validDirections)
+        return roundData
+    }
 
-            if (commandQueue.isEmpty()) {
-                rebuildQueue(commands.filter { it != forcedCommand })
-            } else {
-                commandQueue += newlyUnlockedCommands.filter { it != forcedCommand }
-                commandQueue.shuffle(random)
-            }
-            commandQueue.remove(forcedCommand)
-            commandQueue.add(0, forcedCommand)
-        } else if (commands.size < MIN_COMMANDS_FOR_QUEUE_SELECTION) {
+    private fun selectUnlockedCommand(
+        commands: List<GameCommand>,
+        newlyUnlockedCommands: List<GameCommand>,
+    ): GameCommand {
+        val forcedCommand = newlyUnlockedCommands.random(random)
+        if (!usesQueueSelection(commands)) {
             commandQueue.clear()
-            return commands.random(random)
-        } else if (commandQueue.isEmpty()) {
-            rebuildQueue(commands)
+            return forcedCommand
         }
 
+        if (commandQueue.isEmpty()) {
+            rebuildQueue(commands.filter { it != forcedCommand })
+        } else {
+            commandQueue += newlyUnlockedCommands.filter { it != forcedCommand && it !in commandQueue }
+            commandQueue.shuffle(random)
+        }
+        commandQueue.remove(forcedCommand)
+        commandQueue.add(0, forcedCommand)
         return commandQueue.removeAt(0)
+    }
+
+    private fun popQueuedCommand(commands: List<GameCommand>): GameCommand {
+        if (commandQueue.isEmpty()) {
+            rebuildQueue(commands)
+        }
+        return commandQueue.removeAt(0)
+    }
+
+    private fun nextRandomRoundAvoidingTripleAnswers(commands: List<GameCommand>): RoundData {
+        var candidate = GameRules.roundForCommand(commands.random(random), random)
+        repeat(RANDOM_ANSWER_REROLL_ATTEMPTS) {
+            if (!wouldMakeTripleAnswer(candidate.validDirections)) {
+                return candidate
+            }
+            candidate = GameRules.roundForCommand(commands.random(random), random)
+        }
+        return candidate
+    }
+
+    private fun wouldMakeTripleAnswer(answerSet: Set<Direction>): Boolean =
+        recentAnswerSets.size >= 2 &&
+            recentAnswerSets[recentAnswerSets.lastIndex] == answerSet &&
+            recentAnswerSets[recentAnswerSets.lastIndex - 1] == answerSet
+
+    private fun rememberAnswerSet(answerSet: Set<Direction>) {
+        recentAnswerSets += answerSet
+        while (recentAnswerSets.size > RECENT_ANSWER_HISTORY_SIZE) {
+            recentAnswerSets.removeFirst()
+        }
     }
 
     private fun rebuildQueue(commands: List<GameCommand>) {
@@ -177,6 +209,9 @@ internal class GameSession(
         commandQueue.addAll(commands)
         commandQueue.shuffle(random)
     }
+
+    private fun usesQueueSelection(commands: List<GameCommand>): Boolean =
+        commands.size >= MIN_COMMANDS_FOR_QUEUE_SELECTION
 
     private fun availableCommandsFor(score: Int): List<GameCommand> =
         GameRules.commandIdsForScore(
@@ -189,5 +224,7 @@ internal class GameSession(
 
     private companion object {
         private const val MIN_COMMANDS_FOR_QUEUE_SELECTION = 6
+        private const val RANDOM_ANSWER_REROLL_ATTEMPTS = 4
+        private const val RECENT_ANSWER_HISTORY_SIZE = 2
     }
 }

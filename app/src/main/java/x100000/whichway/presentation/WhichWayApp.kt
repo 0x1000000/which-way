@@ -49,89 +49,55 @@ fun WhichWayApp(repository: GameDataRepository) {
     var showExitPrompt by remember { mutableStateOf(false) }
     var isPlayingBusy by remember { mutableStateOf(false) }
 
-    fun normalConfig() = GameConfig(
-        unlockFloor = 0,
-        commandProfile = CommandProfile.All,
-        timeoutRampMode = TimeoutRampMode.NormalProgression,
+    fun gameConfig(
+        unlockFloor: Int,
+        commandProfile: CommandProfile,
+        timeoutRampMode: TimeoutRampMode,
+        tracksStats: Boolean,
+        allowsProgression: Boolean,
+        skipSuits: Boolean = savedData.skipSuits,
+    ) = GameConfig(
+        unlockFloor = unlockFloor,
+        commandProfile = commandProfile,
+        timeoutRampMode = timeoutRampMode,
         speedPercent = savedData.speedPercent,
         skipColors = savedData.skipColors,
-        skipSuits = savedData.skipSuits,
+        skipSuits = skipSuits,
         skipNot = savedData.skipNot,
+        tracksStats = tracksStats,
+        allowsProgression = allowsProgression,
+    )
+
+    fun trackedProgressionConfig(unlockFloor: Int = 0) = gameConfig(
+        unlockFloor = unlockFloor,
+        commandProfile = CommandProfile.All,
+        timeoutRampMode = TimeoutRampMode.NormalProgression,
         tracksStats = true,
         allowsProgression = true,
     )
 
-    fun fixedLevelConfig(level: Int) = GameConfig(
+    fun fixedLevelConfig(level: Int) = trackedProgressionConfig(
         unlockFloor = GameRules.unlockScoreForLevel(level),
-        commandProfile = CommandProfile.All,
-        timeoutRampMode = TimeoutRampMode.NormalProgression,
-        speedPercent = savedData.speedPercent,
-        skipColors = savedData.skipColors,
-        skipSuits = savedData.skipSuits,
-        skipNot = savedData.skipNot,
-        tracksStats = true,
-        allowsProgression = true,
     )
 
-    fun directionsOnlyConfig() = GameConfig(
+    fun practiceConfig(
+        commandProfile: CommandProfile,
+        skipSuits: Boolean = savedData.skipSuits,
+    ) = gameConfig(
         unlockFloor = GameRules.maxUnlockScore,
-        commandProfile = CommandProfile.DirectionsOnly,
+        commandProfile = commandProfile,
         timeoutRampMode = TimeoutRampMode.PracticeImmediateRamp,
-        speedPercent = savedData.speedPercent,
-        skipColors = savedData.skipColors,
-        skipSuits = savedData.skipSuits,
-        skipNot = savedData.skipNot,
         tracksStats = false,
         allowsProgression = false,
+        skipSuits = skipSuits,
     )
 
-    fun numbersOnlyConfig() = GameConfig(
-        unlockFloor = GameRules.maxUnlockScore,
-        commandProfile = CommandProfile.NumbersOnly,
-        timeoutRampMode = TimeoutRampMode.PracticeImmediateRamp,
-        speedPercent = savedData.speedPercent,
-        skipColors = savedData.skipColors,
-        skipSuits = savedData.skipSuits,
-        skipNot = savedData.skipNot,
-        tracksStats = false,
-        allowsProgression = false,
-    )
-
-    fun mathOnlyConfig() = GameConfig(
-        unlockFloor = GameRules.maxUnlockScore,
-        commandProfile = CommandProfile.MathOnly,
-        timeoutRampMode = TimeoutRampMode.PracticeImmediateRamp,
-        speedPercent = savedData.speedPercent,
-        skipColors = savedData.skipColors,
-        skipSuits = savedData.skipSuits,
-        skipNot = savedData.skipNot,
-        tracksStats = false,
-        allowsProgression = false,
-    )
-
-    fun suitsOnlyConfig() = GameConfig(
-        unlockFloor = GameRules.maxUnlockScore,
-        commandProfile = CommandProfile.SuitsOnly,
-        timeoutRampMode = TimeoutRampMode.PracticeImmediateRamp,
-        speedPercent = savedData.speedPercent,
-        skipColors = savedData.skipColors,
-        skipSuits = false,
-        skipNot = savedData.skipNot,
-        tracksStats = false,
-        allowsProgression = false,
-    )
-
-    fun targetsOnlyConfig() = GameConfig(
-        unlockFloor = GameRules.maxUnlockScore,
-        commandProfile = CommandProfile.TargetsOnly,
-        timeoutRampMode = TimeoutRampMode.PracticeImmediateRamp,
-        speedPercent = savedData.speedPercent,
-        skipColors = savedData.skipColors,
-        skipSuits = savedData.skipSuits,
-        skipNot = savedData.skipNot,
-        tracksStats = false,
-        allowsProgression = false,
-    )
+    fun normalConfig() = trackedProgressionConfig()
+    fun directionsOnlyConfig() = practiceConfig(CommandProfile.DirectionsOnly)
+    fun numbersOnlyConfig() = practiceConfig(CommandProfile.NumbersOnly)
+    fun mathOnlyConfig() = practiceConfig(CommandProfile.MathOnly)
+    fun suitsOnlyConfig() = practiceConfig(CommandProfile.SuitsOnly, skipSuits = false)
+    fun targetsOnlyConfig() = practiceConfig(CommandProfile.TargetsOnly)
 
     fun startGame(config: GameConfig) {
         showExitPrompt = false

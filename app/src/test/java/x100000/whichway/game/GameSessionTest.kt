@@ -190,6 +190,38 @@ class GameSessionTest {
     }
 
     @Test
+    fun smallCommandPool_avoidsThreeIdenticalAnswerSetsInARow() {
+        val alternatingAfterTwoLeftsRandom = object : Random() {
+            private var calls = 0
+
+            override fun nextBits(bitCount: Int): Int {
+                calls += 1
+                return when {
+                    calls <= 2 -> 0
+                    else -> 1 shl (bitCount - 1)
+                }
+            }
+        }
+        val session = GameSession(config = GameConfig(), random = alternatingAfterTwoLeftsRandom)
+        val firstState = session.snapshot()
+
+        assertEquals(setOf(Direction.Left), firstState.roundData.validDirections)
+
+        val firstTransition = session.onZoneClick(
+            direction = firstState.roundData.validDirections.first(),
+            elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+        ) as GameSessionResult.CorrectAdvance
+        assertEquals(setOf(Direction.Left), firstTransition.state.roundData.validDirections)
+
+        val secondTransition = session.onZoneClick(
+            direction = firstTransition.state.roundData.validDirections.first(),
+            elapsedMillis = GameRules.LOW_COMPLEXITY_TIMEOUT_MILLIS,
+        ) as GameSessionResult.CorrectAdvance
+
+        assertNotEquals(setOf(Direction.Left), secondTransition.state.roundData.validDirections)
+    }
+
+    @Test
     fun levelThreeSizedCommandPool_usesQueue_withoutRepeatsInFirstCycle() {
         val session = GameSession(
             config = GameConfig(
