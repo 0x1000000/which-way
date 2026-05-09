@@ -1,7 +1,6 @@
 package x100000.whichway.presentation
 
 import android.graphics.Paint
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -9,7 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import x100000.whichway.game.Direction
 import x100000.whichway.game.RoundData
 
@@ -24,8 +25,25 @@ internal fun GameBoard(
     Box(
         modifier = modifier
             .pointerInput(roundData, roundNumber) {
-                detectTapGestures { offset ->
-                    onDirectionTapped(offset.toDirection(size.width.toFloat(), size.height.toFloat()))
+                awaitPointerEventScope {
+                    while (true) {
+                        val downEvent = awaitPointerEvent(PointerEventPass.Initial)
+                        val downChange = downEvent.changes.firstOrNull { it.pressed && !it.previousPressed }
+                            ?: continue
+                        onDirectionTapped(
+                            downChange.position.toDirection(size.width.toFloat(), size.height.toFloat()),
+                        )
+                        downChange.consume()
+
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            event.changes.forEach { change ->
+                                if (change.pressed && change.positionChanged()) {
+                                    change.consume()
+                                }
+                            }
+                        } while (event.changes.any { it.pressed })
+                    }
                 }
             }
             .drawWithCache {

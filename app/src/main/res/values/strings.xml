@@ -35,6 +35,7 @@
     <string name="session_spent_time_value">Spent time: %1$s</string>
     <string name="total_spent_time_value">Total spent: %1$s</string>
     <string name="games_played_value">Games played: %1$d</string>
+    <string name="version_value">Version: %1$s</string>
     <string name="score_value">Score %1$d</string>
     <string name="level_value">Level %1$d</string>
     <string name="game_over">Game Over</string>

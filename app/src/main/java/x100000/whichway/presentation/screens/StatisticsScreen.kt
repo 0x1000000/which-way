@@ -2,6 +2,7 @@ package x100000.whichway.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import x100000.whichway.BuildConfig
 import x100000.whichway.R
 import x100000.whichway.data.DEFAULT_SPEED_PERCENT
 import x100000.whichway.data.SavedGameData
@@ -39,6 +40,9 @@ internal fun StatisticsScreen(
             ),
             MenuItem.TextLine(
                 text = stringResource(R.string.games_played_value, savedData.gamesPlayed),
+            ),
+            MenuItem.TextLine(
+                text = stringResource(R.string.version_value, BuildConfig.VERSION_NAME),
             ),
             MenuItem.Action(
                 text = stringResource(R.string.home),
