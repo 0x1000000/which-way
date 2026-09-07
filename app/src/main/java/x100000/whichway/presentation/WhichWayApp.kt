@@ -5,15 +5,16 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import kotlin.math.max
 import x100000.whichway.data.GameDataRepository
 import x100000.whichway.data.SavedGameData
@@ -25,13 +26,21 @@ import x100000.whichway.game.GameSession
 import x100000.whichway.game.GameSessionResult
 import x100000.whichway.game.RunStats
 import x100000.whichway.game.TimeoutRampMode
+import x100000.whichway.game.TutorialCommands
+import x100000.whichway.game.TutorialResult
+import x100000.whichway.game.TutorialSession
+import x100000.whichway.game.TutorialState
 
 private sealed interface AppScreen {
+    data object TutorialPrompt : AppScreen
+    data class TutorialInstructions(val forceBeginning: Boolean) : AppScreen
     data object Home : AppScreen
     data object CustomGameMenu : AppScreen
     data object SettingsMenu : AppScreen
     data object StatisticsMenu : AppScreen
     data class Playing(val state: GameScreenState.Playing) : AppScreen
+    data class TutorialPlaying(val state: TutorialState) : AppScreen
+    data object TutorialComplete : AppScreen
     data class GameOver(
         val state: GameScreenState.GameOver,
         val sessionAverageResponseTimeMs: Int,
@@ -42,10 +51,20 @@ private sealed interface AppScreen {
 @Composable
 fun WhichWayApp(repository: GameDataRepository) {
     val context = LocalContext.current
-    val savedData by repository.gameDataFlow.collectAsState(initial = SavedGameData())
+    val loadedSavedData by produceState<SavedGameData?>(initialValue = null, repository) {
+        repository.gameDataFlow.collect { value = it }
+    }
+    val savedData = loadedSavedData ?: return Box(
+        modifier = Modifier.fillMaxSize(),
+    )
     val scope = rememberCoroutineScope()
-    var appScreen by remember { mutableStateOf<AppScreen>(AppScreen.Home) }
+    var appScreen by remember {
+        mutableStateOf<AppScreen>(
+            if (savedData.tutorialPromptDismissed) AppScreen.Home else AppScreen.TutorialPrompt,
+        )
+    }
     var session by remember { mutableStateOf<GameSession?>(null) }
+    var tutorialSession by remember { mutableStateOf<TutorialSession?>(null) }
     var showExitPrompt by remember { mutableStateOf(false) }
     var isPlayingBusy by remember { mutableStateOf(false) }
 
@@ -102,8 +121,25 @@ fun WhichWayApp(repository: GameDataRepository) {
     fun startGame(config: GameConfig) {
         showExitPrompt = false
         isPlayingBusy = false
+        tutorialSession = null
         session = GameSession(config = config)
         appScreen = AppScreen.Playing(session!!.snapshot())
+    }
+
+    fun startTutorial(forceBeginning: Boolean) {
+        showExitPrompt = false
+        isPlayingBusy = false
+        session = null
+        val startIndex = if (forceBeginning || savedData.tutorialCompleted) {
+            0
+        } else {
+            savedData.tutorialChallengeIndex.coerceIn(0, TutorialCommands.all.lastIndex)
+        }
+        tutorialSession = TutorialSession(startChallengeIndex = startIndex)
+        scope.launch {
+            repository.saveTutorialProgress(startIndex)
+        }
+        appScreen = AppScreen.TutorialPlaying(tutorialSession!!.snapshot())
     }
 
     fun finishGame(
@@ -113,6 +149,7 @@ fun WhichWayApp(repository: GameDataRepository) {
         showExitPrompt = false
         isPlayingBusy = false
         session = null
+        tutorialSession = null
         scope.launch {
             repository.saveSpentTime(runStats.totalSpentTimeMs)
             repository.saveParticipation(
@@ -159,8 +196,42 @@ fun WhichWayApp(repository: GameDataRepository) {
         }
     }
 
+    fun applyTutorialResult(result: TutorialResult) {
+        when (result) {
+            is TutorialResult.CorrectAdvance -> {
+                scope.launch {
+                    repository.saveTutorialProgress(result.state.challengeIndex)
+                }
+                appScreen = AppScreen.TutorialPlaying(result.state)
+            }
+            is TutorialResult.WrongTap -> appScreen = AppScreen.TutorialPlaying(result.state)
+            TutorialResult.Complete -> {
+                tutorialSession = null
+                scope.launch {
+                    repository.completeTutorial()
+                }
+                appScreen = AppScreen.TutorialComplete
+            }
+        }
+    }
+
+    fun dismissTutorialPrompt() {
+        scope.launch {
+            repository.dismissTutorialPrompt()
+        }
+        appScreen = AppScreen.Home
+    }
+
     BackHandler {
         when (val screen = appScreen) {
+            AppScreen.TutorialPrompt -> dismissTutorialPrompt()
+            is AppScreen.TutorialInstructions -> {
+                appScreen = if (savedData.tutorialPromptDismissed) {
+                    AppScreen.Home
+                } else {
+                    AppScreen.TutorialPrompt
+                }
+            }
             AppScreen.Home -> (context as? Activity)?.finish()
             AppScreen.CustomGameMenu,
             AppScreen.SettingsMenu,
@@ -179,6 +250,13 @@ fun WhichWayApp(repository: GameDataRepository) {
                 }
             }
 
+            is AppScreen.TutorialPlaying -> {
+                tutorialSession = null
+                appScreen = AppScreen.Home
+            }
+
+            AppScreen.TutorialComplete -> appScreen = AppScreen.Home
+
             is AppScreen.GameOver -> {
                 showExitPrompt = false
                 appScreen = AppScreen.Home
@@ -191,8 +269,22 @@ fun WhichWayApp(repository: GameDataRepository) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val screen = appScreen) {
+            AppScreen.TutorialPrompt -> TutorialPromptScreen(
+                onStartTutorial = {
+                    appScreen = AppScreen.TutorialInstructions(forceBeginning = true)
+                },
+                onSkip = ::dismissTutorialPrompt,
+            )
+
+            is AppScreen.TutorialInstructions -> TutorialInstructionsScreen(
+                onStartTutorial = { startTutorial(forceBeginning = screen.forceBeginning) },
+            )
+
             AppScreen.Home -> HomeScreen(
                 onStart = { startGame(normalConfig()) },
+                onTutorial = {
+                    appScreen = AppScreen.TutorialInstructions(forceBeginning = false)
+                },
                 onCustomGame = { appScreen = AppScreen.CustomGameMenu },
                 onSettings = { appScreen = AppScreen.SettingsMenu },
                 onStatistics = { appScreen = AppScreen.StatisticsMenu },
@@ -233,6 +325,13 @@ fun WhichWayApp(repository: GameDataRepository) {
                         repository.updateSkipNot(!savedData.skipNot)
                     }
                 },
+                onResetTutorial = {
+                    tutorialSession = null
+                    scope.launch {
+                        repository.resetTutorial()
+                    }
+                    appScreen = AppScreen.TutorialPrompt
+                },
                 onBack = { appScreen = AppScreen.Home },
             )
 
@@ -269,6 +368,40 @@ fun WhichWayApp(repository: GameDataRepository) {
                 },
                 onBusyStateChanged = { busy -> isPlayingBusy = busy },
                 onApplyTransition = ::applyTransition,
+            )
+
+            is AppScreen.TutorialPlaying -> TutorialPlayingScreen(
+                state = screen.state,
+                onResolveTap = { direction ->
+                    val activeSession = tutorialSession
+                    val activeScreen = appScreen
+                    if (activeSession == null ||
+                        activeScreen !is AppScreen.TutorialPlaying ||
+                        activeScreen.state.challengeIndex != screen.state.challengeIndex
+                    ) {
+                        return@TutorialPlayingScreen null
+                    }
+                    activeSession.onZoneClick(direction)
+                },
+                onResolveManualAdvance = {
+                    val activeSession = tutorialSession
+                    val activeScreen = appScreen
+                    if (activeSession == null ||
+                        activeScreen !is AppScreen.TutorialPlaying ||
+                        activeScreen.state.challengeIndex != screen.state.challengeIndex
+                    ) {
+                        return@TutorialPlayingScreen null
+                    }
+                    activeSession.onManualAdvance()
+                },
+                onApplyResult = ::applyTutorialResult,
+            )
+
+            AppScreen.TutorialComplete -> TutorialCompleteScreen(
+                onRestart = {
+                    appScreen = AppScreen.TutorialInstructions(forceBeginning = true)
+                },
+                onBackHome = { appScreen = AppScreen.Home },
             )
 
             is AppScreen.GameOver -> GameOverScreen(

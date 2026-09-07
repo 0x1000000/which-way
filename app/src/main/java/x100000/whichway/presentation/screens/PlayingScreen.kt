@@ -1,6 +1,7 @@
 package x100000.whichway.presentation
 
 import android.graphics.Paint
+import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,9 +30,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import x100000.whichway.game.RoundTimer
 import x100000.whichway.game.Direction
 import x100000.whichway.game.GameRules
 import x100000.whichway.game.GameScreenState
@@ -148,7 +153,25 @@ internal fun PlayingScreen(
         val hasZoneMarkers = remember(state.roundData) {
             state.roundData.zoneFacts.values.any { it.color != null || it.number != null || it.suit != null || it.target }
         }
-        val progress = remember { Animatable(1f) }
+        val timer = remember(state.roundNumber, timeoutMillis) {
+            RoundTimer(timeoutMillis, GameRules.TIMEOUT_GRACE_MILLIS, SystemClock::uptimeMillis)
+        }
+        val progress = remember(state.roundNumber) { mutableStateOf(1f) }
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        var isStarted by remember(lifecycle) {
+            mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+        }
+        DisposableEffect(lifecycle, timer) {
+            val observer = LifecycleEventObserver { _, _ ->
+                isStarted = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+                if (!isStarted) timer.pause()
+            }
+            lifecycle.addObserver(observer)
+            onDispose {
+                lifecycle.removeObserver(observer)
+                timer.pause()
+            }
+        }
         val scope = rememberCoroutineScope()
         val haptics = LocalHapticFeedback.current
         var pressedDirection by remember { mutableStateOf<Direction?>(null) }
@@ -171,7 +194,7 @@ internal fun PlayingScreen(
             onFinished: () -> Unit,
         ) {
             isResolving = true
-            progress.stop()
+            timer.pause()
             flashColor = color
             flashSymbol = symbol
             flashSymbolColor = if (symbol == "+\u25A0" || symbol == "\u21BB") FlashAccentTextColor else Color.White
@@ -200,28 +223,25 @@ internal fun PlayingScreen(
             isResolving = false
             flashColor = null
             flashSymbol = null
-            progress.snapTo(1f)
         }
 
-        LaunchedEffect(state.roundNumber, isPaused) {
-            if (isPaused || isResolving) {
+        LaunchedEffect(state.roundNumber, isPaused, isStarted) {
+            if (isPaused || !isStarted || isResolving) {
                 return@LaunchedEffect
             }
-            val remainingDuration = (timeoutMillis * progress.value)
-                .roundToInt()
-                .coerceAtLeast(1)
-            progress.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(
-                    durationMillis = remainingDuration,
-                    easing = LinearEasing,
-                ),
-            )
-            delay(GameRules.TIMEOUT_GRACE_MILLIS.toLong())
+            timer.resume()
+            try {
+                while (!isResolving && timer.remainingMillis > 0L) {
+                    progress.value = timer.progress
+                    delay(minOf(16L, timer.remainingMillis).coerceAtLeast(1L))
+                }
+                progress.value = timer.progress
+            } finally {
+                timer.pause()
+            }
             if (!isPaused && !isResolving) {
                 val transition = onResolve(null, timeoutMillis, true)
                 if (transition == null) {
-                    progress.snapTo(1f)
                     return@LaunchedEffect
                 }
                 when (transition) {
@@ -262,9 +282,7 @@ internal fun PlayingScreen(
                     val correct = GameRules.isCorrectTap(state.roundData, direction)
                     if (correct) {
                         isResolving = true
-                        val elapsedMillis = ((1f - progress.value) * timeoutMillis)
-                            .roundToInt()
-                            .coerceIn(0, timeoutMillis)
+                        val elapsedMillis = timer.responseMillis
                         val transition = onResolve(direction, elapsedMillis, false)
                         if (transition == null) {
                             isResolving = false
@@ -273,7 +291,7 @@ internal fun PlayingScreen(
                         when (transition) {
                             is GameSessionResult.CorrectAdvance -> {
                                 scope.launch {
-                                    progress.stop()
+                                    timer.pause()
                                     showFeedback(
                                         color = SuccessFlashColor,
                                         symbol = if (transition.earnedCharge) "+\u25A0" else null,
@@ -290,12 +308,16 @@ internal fun PlayingScreen(
                             else -> onApplyTransition(transition)
                         }
                     } else {
+                        isResolving = true
+                        val elapsedMillis = timer.responseMillis
+                        timer.pause()
                         scope.launch {
-                            val elapsedMillis = ((1f - progress.value) * timeoutMillis)
-                                .roundToInt()
-                                .coerceIn(0, timeoutMillis)
-                            val transition = onResolve(direction, elapsedMillis, false) ?: return@launch
-                            progress.stop()
+                            val transition = onResolve(direction, elapsedMillis, false)
+                            if (transition == null) {
+                                isResolving = false
+                                return@launch
+                            }
+                            timer.pause()
                             when (transition) {
                                 is GameSessionResult.ChargeReplay -> {
                                     showFeedback(

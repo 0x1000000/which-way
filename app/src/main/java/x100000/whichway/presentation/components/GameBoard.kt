@@ -7,12 +7,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import x100000.whichway.game.Direction
 import x100000.whichway.game.RoundData
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
 
 @Composable
 internal fun GameBoard(
@@ -21,6 +25,8 @@ internal fun GameBoard(
     pressedDirection: Direction?,
     onDirectionTapped: (Direction) -> Unit,
     modifier: Modifier = Modifier,
+    highlightDirections: Set<Direction> = emptySet(),
+    highlightAlpha: Float = 0.42f,
 ) {
     Box(
         modifier = modifier
@@ -72,6 +78,8 @@ internal fun GameBoard(
                     drawDirectionalZones(
                         roundData = roundData,
                         pressedDirection = pressedDirection,
+                        highlightDirections = highlightDirections,
+                        highlightAlpha = highlightAlpha,
                         zonePaths = zonePaths,
                         numberTextPaint = numberTextPaint,
                         targetTextPaint = targetTextPaint,
@@ -100,35 +108,32 @@ private fun createDirectionalZonePaths(
     height: Float,
     center: Offset,
 ): Map<Direction, Path> {
-    val topLeft = Offset.Zero
-    val topRight = Offset(width, 0f)
-    val bottomRight = Offset(width, height)
-    val bottomLeft = Offset(0f, height)
+    val radius = min(width, height) / 2f
+    val circleBounds = Rect(
+        left = center.x - radius,
+        top = center.y - radius,
+        right = center.x + radius,
+        bottom = center.y + radius,
+    )
+
+    fun sector(startAngle: Float): Path {
+        val radians = Math.toRadians(startAngle.toDouble())
+        val arcStart = Offset(
+            x = center.x + radius * cos(radians).toFloat(),
+            y = center.y + radius * sin(radians).toFloat(),
+        )
+        return Path().apply {
+            moveTo(center.x, center.y)
+            lineTo(arcStart.x, arcStart.y)
+            arcTo(circleBounds, startAngle, 90f, forceMoveTo = false)
+            close()
+        }
+    }
 
     return mapOf(
-        Direction.Up to Path().apply {
-            moveTo(center.x, center.y)
-            lineTo(topLeft.x, topLeft.y)
-            lineTo(topRight.x, topRight.y)
-            close()
-        },
-        Direction.Right to Path().apply {
-            moveTo(center.x, center.y)
-            lineTo(topRight.x, topRight.y)
-            lineTo(bottomRight.x, bottomRight.y)
-            close()
-        },
-        Direction.Down to Path().apply {
-            moveTo(center.x, center.y)
-            lineTo(bottomRight.x, bottomRight.y)
-            lineTo(bottomLeft.x, bottomLeft.y)
-            close()
-        },
-        Direction.Left to Path().apply {
-            moveTo(center.x, center.y)
-            lineTo(bottomLeft.x, bottomLeft.y)
-            lineTo(topLeft.x, topLeft.y)
-            close()
-        },
+        Direction.Up to sector(225f),
+        Direction.Right to sector(315f),
+        Direction.Down to sector(45f),
+        Direction.Left to sector(135f),
     )
 }

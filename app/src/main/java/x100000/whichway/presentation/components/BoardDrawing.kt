@@ -11,10 +11,14 @@ import androidx.compose.ui.graphics.nativeCanvas
 import x100000.whichway.game.Direction
 import x100000.whichway.game.RoundData
 import x100000.whichway.presentation.icons.drawSuitIcon
+import kotlin.math.cos
+import kotlin.math.sin
 
 internal fun DrawScope.drawDirectionalZones(
     roundData: RoundData,
     pressedDirection: Direction?,
+    highlightDirections: Set<Direction>,
+    highlightAlpha: Float,
     zonePaths: Map<Direction, androidx.compose.ui.graphics.Path>,
     numberTextPaint: Paint,
     targetTextPaint: Paint,
@@ -29,12 +33,37 @@ internal fun DrawScope.drawDirectionalZones(
             color = if (isPressed) ZonePressedColor else baseColor,
             style = Fill,
         )
-        drawPath(
-            path = path,
-            color = Color(0x1FFFFFFF),
-            style = Stroke(width = 2f),
+        if (direction in highlightDirections) {
+            drawPath(
+                path = path,
+                color = ChargeOnColor.copy(alpha = highlightAlpha),
+                style = Fill,
+            )
+        }
+    }
+
+    // Draw every shared edge once so adjacent triangles never produce thicker lines.
+    val dividerColor = Color(0x1FFFFFFF)
+    val radius = size.minDimension / 2f
+    listOf(45f, 135f, 225f, 315f).forEach { angle ->
+        val radians = Math.toRadians(angle.toDouble())
+        val edge = Offset(
+            x = center.x + radius * cos(radians).toFloat(),
+            y = center.y + radius * sin(radians).toFloat(),
+        )
+        drawLine(
+            color = dividerColor,
+            start = center,
+            end = edge,
+            strokeWidth = 2f,
         )
     }
+    drawCircle(
+        color = dividerColor,
+        radius = radius - 1f,
+        center = center,
+        style = Stroke(width = 2f),
+    )
 
     roundData.zoneFacts.forEach { (direction, facts) ->
         if (facts.color != null || facts.number != null || facts.suit != null || facts.target) {

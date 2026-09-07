@@ -129,6 +129,44 @@ class PreferencesScoreRepositoryTest {
     }
 
     @Test
+    fun saveTutorialProgress_dismissesPromptAndStoresIndex() = runTest {
+        val repository = PreferencesGameDataRepository(createDataStore())
+
+        repository.saveTutorialProgress(7)
+
+        val saved = repository.gameDataFlow.first()
+        assertTrue(saved.tutorialPromptDismissed)
+        assertFalse(saved.tutorialCompleted)
+        assertEquals(7, saved.tutorialChallengeIndex)
+    }
+
+    @Test
+    fun completeTutorial_marksCompleteAndClearsProgressIndex() = runTest {
+        val repository = PreferencesGameDataRepository(createDataStore())
+
+        repository.saveTutorialProgress(4)
+        repository.completeTutorial()
+
+        val saved = repository.gameDataFlow.first()
+        assertTrue(saved.tutorialPromptDismissed)
+        assertTrue(saved.tutorialCompleted)
+        assertEquals(0, saved.tutorialChallengeIndex)
+    }
+
+    @Test
+    fun resetTutorial_clearsPromptCompletionAndProgress() = runTest {
+        val repository = PreferencesGameDataRepository(createDataStore())
+
+        repository.completeTutorial()
+        repository.resetTutorial()
+
+        val saved = repository.gameDataFlow.first()
+        assertFalse(saved.tutorialPromptDismissed)
+        assertFalse(saved.tutorialCompleted)
+        assertEquals(0, saved.tutorialChallengeIndex)
+    }
+
+    @Test
     fun averageResponseTimeMs_usesOnlyStoredTotals() {
         val data = SavedGameData(
             totalNormalResponseTimeMs = 999L,

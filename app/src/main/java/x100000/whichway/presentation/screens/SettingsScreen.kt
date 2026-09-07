@@ -15,6 +15,7 @@ internal fun SettingsScreen(
     onToggleSkipColors: () -> Unit,
     onToggleSkipSuits: () -> Unit,
     onToggleSkipNot: () -> Unit,
+    onResetTutorial: () -> Unit,
     onBack: () -> Unit,
 ) {
     MenuScreen(
@@ -49,6 +50,10 @@ internal fun SettingsScreen(
                 text = stringResource(R.string.skip_not),
                 checked = savedData.skipNot,
                 onToggle = onToggleSkipNot,
+            ),
+            MenuItem.Action(
+                text = stringResource(R.string.reset_tutorial),
+                onClick = onResetTutorial,
             ),
             MenuItem.Action(
                 text = stringResource(R.string.home),

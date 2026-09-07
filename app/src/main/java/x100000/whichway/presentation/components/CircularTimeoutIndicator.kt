@@ -1,6 +1,6 @@
 package x100000.whichway.presentation
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.State
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 
 @Composable
 internal fun CircularTimeoutIndicator(
-    progress: Animatable<Float, *>,
+    progress: State<Float>,
     uiMetrics: WatchUiMetrics,
     modifier: Modifier = Modifier,
 ) {

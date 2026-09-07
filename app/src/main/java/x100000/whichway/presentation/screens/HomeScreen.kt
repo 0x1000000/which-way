@@ -10,6 +10,7 @@ import x100000.whichway.presentation.theme.WhichWayTheme
 @Composable
 internal fun HomeScreen(
     onStart: () -> Unit,
+    onTutorial: () -> Unit,
     onCustomGame: () -> Unit,
     onSettings: () -> Unit,
     onStatistics: () -> Unit,
@@ -24,6 +25,10 @@ internal fun HomeScreen(
             MenuItem.Action(
                 text = stringResource(R.string.custom_game),
                 onClick = onCustomGame,
+            ),
+            MenuItem.Action(
+                text = stringResource(R.string.tutorial),
+                onClick = onTutorial,
             ),
             MenuItem.Action(
                 text = stringResource(R.string.settings),
@@ -44,6 +49,7 @@ private fun HomePreview() {
     WhichWayTheme {
         HomeScreen(
             onStart = {},
+            onTutorial = {},
             onCustomGame = {},
             onSettings = {},
             onStatistics = {},

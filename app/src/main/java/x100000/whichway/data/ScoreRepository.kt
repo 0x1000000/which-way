@@ -25,6 +25,9 @@ data class SavedGameData(
     val skipColors: Boolean = false,
     val skipSuits: Boolean = false,
     val skipNot: Boolean = false,
+    val tutorialPromptDismissed: Boolean = false,
+    val tutorialCompleted: Boolean = false,
+    val tutorialChallengeIndex: Int = 0,
 ) {
     val averageResponseTimeMs: Int
         get() = if (totalNormalResponseCount == 0) {
@@ -59,6 +62,14 @@ interface GameDataRepository {
     suspend fun updateSkipSuits(skipSuits: Boolean)
 
     suspend fun updateSkipNot(skipNot: Boolean)
+
+    suspend fun dismissTutorialPrompt()
+
+    suspend fun saveTutorialProgress(challengeIndex: Int)
+
+    suspend fun completeTutorial()
+
+    suspend fun resetTutorial()
 }
 
 private val Context.scoreDataStore: DataStore<Preferences> by preferencesDataStore(name = "scores")
@@ -82,6 +93,9 @@ class PreferencesGameDataRepository(
                 skipColors = preferences[SKIP_COLORS_KEY] ?: false,
                 skipSuits = preferences[SKIP_SUITS_KEY] ?: false,
                 skipNot = preferences[SKIP_NOT_KEY] ?: false,
+                tutorialPromptDismissed = preferences[TUTORIAL_PROMPT_DISMISSED_KEY] ?: false,
+                tutorialCompleted = preferences[TUTORIAL_COMPLETED_KEY] ?: false,
+                tutorialChallengeIndex = preferences[TUTORIAL_CHALLENGE_INDEX_KEY] ?: 0,
             )
         }
 
@@ -143,6 +157,36 @@ class PreferencesGameDataRepository(
         }
     }
 
+    override suspend fun dismissTutorialPrompt() {
+        dataStore.edit { preferences ->
+            preferences[TUTORIAL_PROMPT_DISMISSED_KEY] = true
+        }
+    }
+
+    override suspend fun saveTutorialProgress(challengeIndex: Int) {
+        dataStore.edit { preferences ->
+            preferences[TUTORIAL_PROMPT_DISMISSED_KEY] = true
+            preferences[TUTORIAL_COMPLETED_KEY] = false
+            preferences[TUTORIAL_CHALLENGE_INDEX_KEY] = challengeIndex.coerceAtLeast(0)
+        }
+    }
+
+    override suspend fun completeTutorial() {
+        dataStore.edit { preferences ->
+            preferences[TUTORIAL_PROMPT_DISMISSED_KEY] = true
+            preferences[TUTORIAL_COMPLETED_KEY] = true
+            preferences[TUTORIAL_CHALLENGE_INDEX_KEY] = 0
+        }
+    }
+
+    override suspend fun resetTutorial() {
+        dataStore.edit { preferences ->
+            preferences[TUTORIAL_PROMPT_DISMISSED_KEY] = false
+            preferences[TUTORIAL_COMPLETED_KEY] = false
+            preferences[TUTORIAL_CHALLENGE_INDEX_KEY] = 0
+        }
+    }
+
     private companion object {
         val LAST_SCORE_KEY = intPreferencesKey("last_score")
         val LAST_SCORE_SPEED_PERCENT_KEY = intPreferencesKey("last_score_speed_percent")
@@ -156,6 +200,9 @@ class PreferencesGameDataRepository(
         val SKIP_COLORS_KEY = booleanPreferencesKey("skip_colors")
         val SKIP_SUITS_KEY = booleanPreferencesKey("skip_suits")
         val SKIP_NOT_KEY = booleanPreferencesKey("skip_not")
+        val TUTORIAL_PROMPT_DISMISSED_KEY = booleanPreferencesKey("tutorial_prompt_dismissed")
+        val TUTORIAL_COMPLETED_KEY = booleanPreferencesKey("tutorial_completed")
+        val TUTORIAL_CHALLENGE_INDEX_KEY = intPreferencesKey("tutorial_challenge_index")
     }
 }
 

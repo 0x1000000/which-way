@@ -60,6 +60,7 @@ internal sealed interface MenuItem {
 
     data class TextLine(
         val text: String,
+        val maxLines: Int = 2,
     ) : MenuItem
 
     data class SummaryCard(
@@ -338,7 +339,7 @@ private fun TextLineMenuRow(
         Text(
             text = item.text,
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
+            maxLines = item.maxLines,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
         )
